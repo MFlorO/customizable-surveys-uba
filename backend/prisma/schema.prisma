@@ -1,0 +1,139 @@
+//*Contiene los modelos de la base de datos
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SurveyStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum QuestionType {
+  TEXT            // texto libre sin límite
+  TEXT_LIMITED    // texto con límite de caracteres
+  NUMBER          // número sin límite
+  NUMBER_LIMITED  // número con límite
+  SELECT_ONE      // lista de opciones (una sola opción)
+  SELECT_MULTIPLE // lista de opciones (varias opciones)
+}
+
+enum LogicAction {
+  FINALIZE
+  DISABLE_QUESTION
+}
+
+model Survey {
+  id          Int           @id @default(autoincrement())
+  title       String
+  description String?
+  status      SurveyStatus  @default(DRAFT)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  sections    Section[]
+
+  SurveyResponse SurveyResponse[]
+}
+
+model Section {
+  id        Int           @id @default(autoincrement())
+  title     String
+  order     Int           // para ordenar las secciones si querés
+  surveyId  Int
+  survey    Survey        @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  questions Question[]
+
+  Answer    Answer[] 
+}
+
+model Question {
+  id              Int               @id @default(autoincrement())
+  title           String
+  description     String?
+  type            QuestionType
+  isRequired      Boolean           @default(true)
+  characterLimit  Int?              // solo para texto o número limitados
+  sectionId       Int
+  section         Section           @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  options         Option[]          // si la pregunta que tiene multiple opciones
+  logicConditions LogicCondition[]  // lógica condicional si aplica
+
+  Answer Answer[]
+}
+
+model Option {
+  id             Int      @id @default(autoincrement())
+  label          String   // lo que ve el usuario
+  code           Int      // el valor que se guarda (numérico)
+  questionId     Int
+  question       Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  isCustomText   Boolean @default(false)
+
+  LogicCondition LogicCondition[]
+}
+
+model LogicCondition {
+  id               Int         @id @default(autoincrement())
+  questionId       Int         // Pregunta actual
+  question         Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  triggerOptionId  Int         // si responde esta opción... // Opción que activa esta regla
+  triggerOption    Option      @relation(fields: [triggerOptionId], references: [id], onDelete: Cascade)
+  action           LogicAction // finalizar encuesta o deshabilitar otra
+  targetQuestionId Int?        // si aplica (para DISABLE_QUESTION)
+}
+
+
+model SurveyResponse {
+  id        Int       @id @default(autoincrement())
+  surveyId  Int
+  survey    Survey     @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  answers   Answer[]
+}
+
+model Answer {
+  id               Int            @id @default(autoincrement())
+  responseId       Int
+  response         SurveyResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  questionId       Int
+  question         Question       @relation(fields: [questionId], references: [id])
+  optionCodes      Int[]          // Guardamos los códigos (no los IDs)
+  textAnswer       String?        // para TEXT / TEXT_LIMITED
+  numericAnswer    Float?         // para NUMBER / NUMBER_LIMITED
+  questionTitle    String?  
+  sectionId        Int
+  section          Section        @relation(fields: [sectionId], references: [id], onDelete: Cascade) 
+  sectionTitle     String?  
+  questionRequired Boolean? 
+
+  logicApplied     Boolean?       @default(false)// indica si se activó una lógica
+  logicAction      LogicAction?   // qué acción fue aplicada (FINALIZE, DISABLE_QUESTION)
+  logicTargetId    Int?           // si deshabilitó otra pregunta
+}
+
+
+
+// | Tipo de pregunta | ¿Necesita opciones? | ¿characterLimit aplica? |
+// | ---------------- | ------------------- | ----------------------- |
+// | TEXT             | No                  | No                      |
+// | TEXT\_LIMITED    | No                  | Sí                      |
+// | NUMBER           | No                  | No                      |
+// | NUMBER\_LIMITED  | No                  | Sí                      |
+// | SELECT\_ONE      | Sí                  | No                      |
+// | SELECT\_MULTIPLE | Sí                  | No                      |
+
+
+// Consideraciones clave: 
+// ¿Y la validación?
+// La podés manejar en el backend o frontend en base a:
+// type
+// characterLimit
+// presencia de options
+// Por ejemplo:
+// Si es SELECT_ONE, debe tener options.length > 0.
+// Si es TEXT_LIMITED y characterLimit es null → error.
