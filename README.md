@@ -27,6 +27,4 @@
 4. LogicCondition: 
 
 # Consideraciones:
-
-1. Relaciones Opcionales: Las relaciones opcionales como Image[] y Video[] permiten que una receta no tenga medios asociados si no se proporcionan.
-2. Estructura de Roles: El enum Rol define los diferentes tipos de usuarios que pueden interactuar con la aplicación, lo que puede facilitar la implementación de permisos y accesos diferenciados. 
+1. Relaciones Opcionales: 
