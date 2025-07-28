@@ -19,6 +19,7 @@ async function main() {
       title: '3ra Encuesta a estudiantes',
       description: 'Desde la UBA estamos interesados en conocer las experiencias de aprendizaje de las y los estudiantes de la Universidad de Buenos Aires durante el primer cuatrimestre de 2025',
       status: 'DRAFT',
+      isEnable: false
     },
   });
 
@@ -959,6 +960,7 @@ main()
 //       title: '3ra Encuesta a estudiantes',
 //       description: 'Desde la UBA estamos interesados en conocer las experiencias de aprendizaje de las y los estudiantes de la Universidad de Buenos Aires durante el primer cuatrimestre de 2025',
 //       status: 'DRAFT',
+//       isEnable: false
 //     },
 //   });
 

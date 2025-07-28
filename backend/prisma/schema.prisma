@@ -10,8 +10,8 @@ datasource db {
 }
 
 enum SurveyStatus {
-  DRAFT
-  PUBLISHED
+  DRAFT             //Es un encuesta borrador. No se puede responder.
+  PUBLISHED         //Es una encuesta publicada. Tiene Link pero si no esta habilitada no se puede responder.           
 }
 
 enum QuestionType {
@@ -26,6 +26,8 @@ enum QuestionType {
 enum LogicAction {
   FINALIZE
   DISABLE_QUESTION
+  ENABLE_QUESTION
+  DISABLE_SECTION
 }
 
 model Survey {
@@ -33,6 +35,7 @@ model Survey {
   title       String
   description String?
   status      SurveyStatus  @default(DRAFT)
+  isEnable    Boolean       @default(false)  //Solo se puede habilitar una pregunta publicada. Para poder responder una pregunta tiene que estar publicada y habilitada.
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   sections    Section[]
@@ -84,7 +87,8 @@ model LogicCondition {
   triggerOptionId  Int         // si responde esta opción... // Opción que activa esta regla
   triggerOption    Option      @relation(fields: [triggerOptionId], references: [id], onDelete: Cascade)
   action           LogicAction // finalizar encuesta o deshabilitar otra
-  targetQuestionId Int?        // si aplica (para DISABLE_QUESTION)
+  targetQuestionId Int?        // si aplica (para DISABLE_QUESTION | ENABLE_QUESTION)
+  targetSectionId  Int?        // si aplica (para DISABLE_SECTION)
 }
 
 
@@ -112,10 +116,9 @@ model Answer {
   questionRequired Boolean? 
 
   logicApplied     Boolean?       @default(false)// indica si se activó una lógica
-  logicAction      LogicAction?   // qué acción fue aplicada (FINALIZE, DISABLE_QUESTION)
+  logicAction      LogicAction?   // qué acción fue aplicada (FINALIZE, DISABLE_QUESTION, ENABLE_QUESTION, DISABLE_SECTION)
   logicTargetId    Int?           // si deshabilitó otra pregunta
 }
-
 
 
 // | Tipo de pregunta | ¿Necesita opciones? | ¿characterLimit aplica? |
@@ -127,13 +130,3 @@ model Answer {
 // | SELECT\_ONE      | Sí                  | No                      |
 // | SELECT\_MULTIPLE | Sí                  | No                      |
 
-
-// Consideraciones clave: 
-// ¿Y la validación?
-// La podés manejar en el backend o frontend en base a:
-// type
-// characterLimit
-// presencia de options
-// Por ejemplo:
-// Si es SELECT_ONE, debe tener options.length > 0.
-// Si es TEXT_LIMITED y characterLimit es null → error.
