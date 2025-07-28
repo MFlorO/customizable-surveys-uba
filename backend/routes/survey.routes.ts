@@ -6,10 +6,11 @@ import { createSurveySchema, updateSurveySchema } from '../validators/survey.val
 
 router.post('/', validate(createSurveySchema), SurveyController.create);
 router.put('/:id', validate(updateSurveySchema), SurveyController.updateById);
-router.post('/:id/publish', SurveyController.publish);
 router.get('/', SurveyController.getAll);
 router.get('/:id', SurveyController.getById);
 router.delete('/:id', SurveyController.deleteById);
+router.patch('/:id/publish', SurveyController.publish);
+router.patch('/:id/enable', SurveyController.enable);
 
 module.exports = router;
 

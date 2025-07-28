@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { LogicAction, PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -30,7 +30,7 @@ export class ResponseService {
         if (!question) throw new Error(`Pregunta ${answer.questionId} no encontrada`);
 
         let logicApplied = false;
-        let logicAction: "FINALIZE" | "DISABLE_QUESTION" | undefined = undefined;
+        let logicAction: LogicAction | undefined = undefined;
         let logicTargetId: number | undefined = undefined;
 
         let selectedOptions = [];

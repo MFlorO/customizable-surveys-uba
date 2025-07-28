@@ -22,16 +22,6 @@ export class SurveyController {
     }
   }
 
-  static async publish(req: Request, res: Response) {
-    const id = Number(req.params.id);
-    try {
-      const result = await SurveyService.publish(id);
-      res.json(result);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  }
-
   static async getAll(req: Request, res: Response) {
     const result = await SurveyService.getAll();
     res.json(result);
@@ -67,6 +57,33 @@ export class SurveyController {
       } else {
         res.status(500).json({ message: 'Error desconocido' });
       }
+    }
+  }
+
+  static async publish(req: Request, res: Response) {
+    const id = Number(req.params.id);
+    try {
+      const result = await SurveyService.publish(id);
+      res.json(result);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+  
+  static async enable(req: Request, res: Response) {
+    
+    const id = Number(req.params.id);
+    const { isEnable } = req.body;
+
+    if (isNaN(id) || typeof isEnable !== 'boolean') {
+      return res.status(400).json({ error: 'Parámetros inválidos' });
+    }
+
+    try {
+      const updated = await SurveyService.enable(id, isEnable);
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
     }
   }
 
