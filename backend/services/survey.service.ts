@@ -7,7 +7,7 @@ type SurveyInput = {
   status: SurveyStatus,
   isEnable: boolean;
   sections?: {
-    title: string;
+    title?: string;
     order?: number;
     questions?: {
       title: string;
@@ -43,7 +43,7 @@ export class SurveyService {
         isEnable: data.isEnable,
         sections: {
           create: sectionsInput.map((section, sectionIndex) => ({
-            title: section.title,
+            title: section.title ?? "",
             order: section.order ?? sectionIndex,
             questions: {
               create: !data.sections 
@@ -112,8 +112,6 @@ export class SurveyService {
         }
       }
 
-
-      // Luego consultas la encuesta con todo
       const surveyComplete = await prisma.survey.findUnique({
         where: { id: survey.id },
         include: {
@@ -129,7 +127,6 @@ export class SurveyService {
           },
         },
       });
-
 
       return surveyComplete;
     } catch (error) {
@@ -160,7 +157,7 @@ export class SurveyService {
       sections: data.sections?.length
       ? {
           create: data.sections.map((section, index) => ({
-            title: section.title,
+            title: section.title ?? "",
             order: section.order ?? index,
             questions: section.questions?.length
             ? {

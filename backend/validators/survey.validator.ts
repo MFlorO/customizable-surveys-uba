@@ -6,7 +6,6 @@ export const createSurveySchema = z.object({
   description: z.string().optional(),
   sections: z.array(
     z.object({
-      title: z.string().min(1, 'Título de la sección obligatorio'),
       questions: z.array(
         z.object({
           title: z.string().min(1, 'Título de la pregunta obligatorio'),

@@ -13,7 +13,7 @@ export class LogicConditionController {
 
   static async update(req: Request, res: Response, next: NextFunction) {
     try {
-      const logic = await LogicConditionService.update(Number(req.params.id), req.body);
+      const logic = await LogicConditionService.updateById(Number(req.params.id), req.body);
       res.json(logic);
     } catch (error) {
       next(error);
@@ -38,12 +38,4 @@ export class LogicConditionController {
     }
   }
 
-  static async getByQuestion(req: Request, res: Response, next: NextFunction) {
-    try {
-      const logics = await LogicConditionService.getByQuestion(Number(req.params.questionId));
-      res.json(logics);
-    } catch (error) {
-      next(error);
-    }
-  }
 }

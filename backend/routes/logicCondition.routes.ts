@@ -7,7 +7,6 @@ router.post('/', LogicConditionController.create);
 router.put('/:id', LogicConditionController.update);
 router.delete('/:id', LogicConditionController.delete);
 router.get('/:id', LogicConditionController.getById);
-router.get('/question/:questionId', LogicConditionController.getByQuestion);
 
 export default router;
 

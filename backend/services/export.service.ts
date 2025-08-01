@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import { Option, SurveyResponseExport } from './surveyService';
+import { Option, SurveyResponseExport } from './survey.service';
 
 export class ExportService {
     
