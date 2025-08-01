@@ -1,4 +1,5 @@
 import { PrismaClient, SurveyStatus, QuestionType, Prisma, LogicAction } from '@prisma/client';
+import { validateLogicConditionData } from '../validators/logicCondition.validatiors';
 const prisma = new PrismaClient();
 
 type SurveyInput = {
@@ -96,6 +97,12 @@ export class SurveyService {
             for (const logic of questionInput.logicConditions) {
 
               const triggeredOption = createdQuestion.options.find((opt) => opt.code === logic.triggerOptionId);
+              
+              const data = { 
+                ...logic,
+                questionId: createdQuestion.id
+              };
+              await validateLogicConditionData(data);
 
               if (triggeredOption) {
                 await prisma.logicCondition.create({
