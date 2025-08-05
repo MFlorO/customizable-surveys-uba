@@ -7,8 +7,7 @@ router.post('/', ResponseController.submit);
 router.get('/:id', ResponseController.getById); 
 router.get('/survey/:id', ResponseController.getAllBySurveyId);
 
-export default router;
-
+module.exports = router;
 
 
 // | Método | Ruta                    | Acción                                                                |

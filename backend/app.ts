@@ -1,11 +1,10 @@
-import { Request, Response, NextFunction } from 'express';
-import { errorHandler } from './middleware/errorHandler';
 const express = require('express');
+const errorHandler = require('./middleware/errorHandler.ts');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const cors = require('cors');
-const routes = require('./routes'); 
+const routes = require('./routes/index.ts'); 
 const app = express()
 const { PORT } = require('../backend/env')
 
@@ -16,7 +15,7 @@ app.use(bodyParser.json({ limit: '50mb' }));
 app.use(cookieParser());
 app.use(morgan('dev'));
 
-app.use((req: Request, res: Response, next: NextFunction) => {
+app.use((req: any, res: any, next: any) => {
   // aunque no uses req, le das tipo
   res.header('Access-Control-Allow-Origin', '*'); 
   res.header('Access-Control-Allow-Credentials', 'true');

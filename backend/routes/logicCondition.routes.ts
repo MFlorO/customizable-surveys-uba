@@ -8,7 +8,7 @@ router.put('/:id', LogicConditionController.update);
 router.delete('/:id', LogicConditionController.delete);
 router.get('/:id', LogicConditionController.getById);
 
-export default router;
+module.exports = router;
 
 
 // | Método | Ruta                                 | Acción                                                                 |
