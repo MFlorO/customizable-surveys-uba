@@ -1,5 +1,6 @@
 import { PrismaClient, SurveyStatus, QuestionType, Prisma, LogicAction } from '@prisma/client';
 import { validateLogicConditionData } from '../validators/logicCondition.validatiors';
+import { HttpError } from '../utils';
 const prisma = new PrismaClient();
 
 type SurveyInput = {
@@ -8,9 +9,11 @@ type SurveyInput = {
   status: SurveyStatus,
   isEnable: boolean;
   sections?: {
+    id: number;
     title?: string;
     order?: number;
     questions?: {
+      id: number;
       title: string;
       description?: string;
       type: QuestionType;
@@ -20,8 +23,10 @@ type SurveyInput = {
         triggerOptionId: number;
         action: LogicAction;
         targetQuestionId?: number;
+        targetSectionId?: number;
       }[];
       options?: {
+        id: number;
         label: string;
         code: number;
         isCustomText: boolean;
@@ -86,40 +91,55 @@ export class SurveyService {
         },
       });
 
-
       for (const [sectionIndex, section] of (data.sections ?? []).entries()) {
-        const createdSection = survey.sections[sectionIndex];
+        const originalSection = survey.sections[sectionIndex];
 
         for (const [questionIndex, questionInput] of (section.questions ?? []).entries()) {
-          const createdQuestion = createdSection.questions[questionIndex];
+          const originalQuestion = originalSection.questions[questionIndex];
 
           if (questionInput.logicConditions?.length) {
             for (const logic of questionInput.logicConditions) {
+              const triggeredOption = originalQuestion.options.find(opt => opt.id === logic.triggerOptionId); //TODO: OJO ! CODE?
 
-              const triggeredOption = createdQuestion.options.find((opt) => opt.code === logic.triggerOptionId);
-              
-              const data = { 
-                ...logic,
-                questionId: createdQuestion.id
-              };
-              await validateLogicConditionData(data);
-
-              if (triggeredOption) {
-                await prisma.logicCondition.create({
-                  data: {
-                    questionId: createdQuestion.id,
-                    triggerOptionId: triggeredOption.id,
-                    action: logic.action,
-                    targetQuestionId: logic.targetQuestionId ?? null,
-                  },
-                });
+              if (!triggeredOption) {
+                throw new HttpError(`Opción no encontrada con código: ${logic.triggerOptionId}`, 400);
               }
+
+              const targetQuestionIndex = logic.targetQuestionId != null
+                ? section.questions?.findIndex(item => item.id === logic.targetQuestionId)
+                : -1;
+
+              const realTargetQuestionId =
+                targetQuestionIndex !== -1 && targetQuestionIndex != null
+                  ? originalSection.questions?.[targetQuestionIndex]?.id ?? null
+                  : null;
+              
+              const targetSectionIndex = logic.targetSectionId != null
+                ? data.sections?.findIndex(item => item.id === logic.targetSectionId)
+                : -1;
+
+              const realTargetSectionId =
+                targetSectionIndex !== -1 && targetSectionIndex != null
+                  ? survey.sections?.[targetSectionIndex]?.id ?? null
+                  : null;
+
+              const validationData = {
+                questionId: originalQuestion.id,
+                triggerOptionId: triggeredOption.id,
+                action: logic.action,
+                targetQuestionId: realTargetQuestionId,
+                targetSectionId: realTargetSectionId,
+              };
+
+              await validateLogicConditionData(validationData);
+
+              await prisma.logicCondition.create({ data: validationData });
             }
           }
         }
       }
 
-      const surveyComplete = await prisma.survey.findUnique({
+      return await prisma.survey.findUnique({
         where: { id: survey.id },
         include: {
           sections: {
@@ -135,7 +155,6 @@ export class SurveyService {
         },
       });
 
-      return surveyComplete;
     } catch (error) {
       console.error("Error creando encuesta:", error);
       throw error;
@@ -149,62 +168,136 @@ export class SurveyService {
       include: { sections: true }
     });
 
-    if (!survey) throw new Error('Encuesta no encontrada');
-    if (survey.status !== SurveyStatus.DRAFT) throw new Error('Solo se puede editar si está en estado DRAFT');
+    if (!survey) throw new HttpError('Encuesta no encontrada', 404);
+    if (survey.status !== SurveyStatus.DRAFT) {
+      throw new HttpError('Solo se puede editar si está en estado DRAFT', 400);
+    }
 
-    // 1. Eliminar secciones asociadas (cascada borra preguntas y opciones)
     await prisma.section.deleteMany({ where: { surveyId: id } });
 
-    // 2. Crear nuevo objeto con todo
     const prismaData: Prisma.SurveyUpdateInput = {
       title: data.title,
       description: data.description,
       status: data.status,
       isEnable: data.isEnable,
       sections: data.sections?.length
-      ? {
-          create: data.sections.map((section, index) => ({
-            title: section.title ?? "",
-            order: section.order ?? index,
-            questions: section.questions?.length
-            ? {
-              create: section.questions.map((q) => ({
-                title: q.title,
-                type: q.type,
-                isRequired: q.isRequired ?? true, 
-                characterLimit: q.characterLimit,
-                options: q.options?.length
-                  ? {
-                      create: q.options.map((opt) => ({
-                        label: opt.label,
-                        code: opt.code,
-                        isCustomText: opt.isCustomText,
-                      }))
-                    }
-                  : undefined
-                }))
-              }
-            : undefined
-          }))
-        }
-      : undefined
+        ? {
+            create: data.sections.map((section, index) => ({
+              title: section.title ?? "",
+              order: section.order ?? index,
+              questions: section.questions?.length
+                ? {
+                    create: section.questions.map((q) => ({
+                      title: q.title,
+                      type: q.type,
+                      isRequired: q.isRequired ?? true,
+                      characterLimit: q.characterLimit,
+                      options: q.options?.length
+                        ? {
+                            create: q.options.map((opt) => ({
+                              label: opt.label,
+                              code: opt.code,
+                              isCustomText: opt.isCustomText,
+                            }))
+                          }
+                        : undefined
+                    }))
+                  }
+                : undefined
+            }))
+          }
+        : undefined
     };
 
-    // 3. Actualizar encuesta con nuevas secciones
-    return await prisma.survey.update({
+    await prisma.survey.update({
       where: { id },
       data: prismaData,
+    });
+
+    const updatedSurvey = await prisma.survey.findUnique({
+      where: { id },
       include: {
         sections: {
           include: {
             questions: {
               include: {
-                options: true
+                options: true,
+                logicConditions: true,
               }
             }
           }
         }
       }
+    });
+
+    if (!updatedSurvey) throw new HttpError('Error al recuperar la encuesta actualizada', 500);
+
+    for (const [sectionIndex, section] of (data.sections ?? []).entries()) {
+
+      const originalSection = updatedSurvey.sections[sectionIndex];
+
+      for (const [questionIndex, questionInput] of (section.questions ?? []).entries()) {
+        const originalQuestion = originalSection.questions[questionIndex];
+
+        if (questionInput.logicConditions?.length) {
+          for (const logic of questionInput.logicConditions) {
+
+            const triggeredOptionIndex = questionInput?.options?.findIndex(opt => opt.id === logic.triggerOptionId);
+
+            const realTriggeredOption = (triggeredOptionIndex !== -1 && triggeredOptionIndex !== undefined)
+            ? originalQuestion?.options[triggeredOptionIndex]?.id ?? null
+            : null;
+
+            if (!realTriggeredOption) {
+              throw new HttpError(`Opción no encontrada con código: ${logic.triggerOptionId}`, 400);
+            }
+
+            const targetQuestionIndex = logic.targetQuestionId != null
+            ? section.questions?.findIndex(item => item.id === logic.targetQuestionId)
+            : -1;
+
+            const realTargetQuestionId = targetQuestionIndex !== -1 && targetQuestionIndex != null
+            ? originalSection.questions?.[targetQuestionIndex]?.id ?? null
+            : null;
+
+            const targetSectionIndex = logic.targetSectionId != null
+            ? data.sections?.findIndex(item => item.id === logic.targetSectionId)
+            : -1;
+
+            const realTargetSectionId = targetSectionIndex !== -1 && targetSectionIndex != null
+            ? updatedSurvey.sections?.[targetSectionIndex]?.id ?? null
+            : null;
+
+            const validationData = {
+              questionId: originalQuestion.id,
+              triggerOptionId: realTriggeredOption,
+              action: logic.action,
+              targetQuestionId: realTargetQuestionId,
+              targetSectionId: realTargetSectionId,
+            };
+
+            await validateLogicConditionData(validationData);
+
+            await prisma.logicCondition.create({ data: validationData });
+          }
+        }
+      }
+    }
+
+    return await prisma.survey.findUnique({
+      where: { id },
+      include: {
+        sections: {
+          include: {
+            questions: {
+              include: {
+                options: true,
+                logicConditions: true,
+              },
+            },
+          },
+        },
+      },
     });
   }
 
@@ -268,13 +361,9 @@ export class SurveyService {
       },
     });
 
-    if (!survey) {
-      throw new Error('Encuesta no encontrada');
-    }
+    if (!survey) throw new HttpError('Encuesta no encontrada', 404);
 
-    await prisma.survey.delete({
-      where: { id },
-    });
+    await prisma.survey.delete({ where: { id } });
 
     return {
       message: `Encuesta con ID ${id} eliminada correctamente`,
@@ -285,8 +374,8 @@ export class SurveyService {
   static async publish(id: number) {
 
     const survey = await prisma.survey.findUnique({ where: { id } });
-    if (!survey) throw new Error('Encuesta no encontrada');
-    if (survey.status === SurveyStatus.PUBLISHED) throw new Error('La encuesta ya está publicada');
+    if (!survey) throw new HttpError('Encuesta no encontrada', 404);
+    if (survey.status === SurveyStatus.PUBLISHED) throw new HttpError('La encuesta ya está publicada', 400);
 
     return prisma.survey.update({
       where: { id },
@@ -297,10 +386,10 @@ export class SurveyService {
   static async enable(id: number, isEnable: boolean) {
     const survey = await prisma.survey.findUnique({ where: { id } });
 
-    if (!survey) throw new Error('Encuesta no encontrada');
+    if (!survey) throw new HttpError('Encuesta no encontrada',404);
 
     if (survey.status !== SurveyStatus.PUBLISHED) {
-      throw new Error('Solo se puede habilitar/deshabilitar si la encuesta está en estado PUBLISHED');
+      throw new HttpError('Solo se puede habilitar/deshabilitar si la encuesta está en estado PUBLISHED',400);
     }
 
     return prisma.survey.update({

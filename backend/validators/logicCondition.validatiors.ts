@@ -1,4 +1,5 @@
-import { PrismaClient, LogicAction } from '@prisma/client';
+import { PrismaClient, LogicAction, SurveyStatus } from '@prisma/client';
+import { HttpError } from '../utils';
 
 const prisma = new PrismaClient();
 
@@ -22,35 +23,35 @@ export const validateLogicConditionData = async (
     },
   });
 
-  if (!question) throw new Error('La pregunta indicada no existe.');
+  if (!question) throw new HttpError('La pregunta indicada no existe.', 404);
 
-  if (question.section.survey.status !== 'DRAFT') {
-    throw new Error('Solo se puede modificar la lógica si la encuesta está en estado DRAFT.');
+  if (question.section.survey.status !== SurveyStatus.DRAFT) {
+    throw new HttpError('Solo se puede modificar la lógica si la encuesta está en estado DRAFT.', 400);
   }
 
   const option = await prisma.option.findUnique({ where: { id: triggerOptionId } });
 
-  if (!option) throw new Error('La opción disparadora no existe.');
+  if (!option) throw new HttpError('La opción disparadora no existe.', 404);
 
   if (option.questionId !== questionId) {
-    throw new Error('La opción no pertenece a la pregunta indicada.');
+    throw new HttpError('La opción no pertenece a la pregunta indicada.', 400);
   }
 
-  if ((action === 'ENABLE_QUESTION' || action === 'DISABLE_QUESTION') && !targetQuestionId) {
-    throw new Error('Debes proporcionar una pregunta objetivo para esta acción.');
+  if ((action === LogicAction.ENABLE_QUESTION || action === LogicAction.DISABLE_QUESTION) && !targetQuestionId) {
+    throw new HttpError('Debes proporcionar una pregunta objetivo para esta acción.', 400);
   }
 
-  if ((action === 'ENABLE_QUESTION' || action === 'DISABLE_QUESTION') && targetQuestionId) {
+  if ((action === LogicAction.ENABLE_QUESTION || action === LogicAction.DISABLE_QUESTION) && targetQuestionId) {
     const targetQuestion = await prisma.question.findUnique({ where: { id: targetQuestionId } });
-    if (!targetQuestion) throw new Error('La pregunta objetivo no existe.');
+    if (!targetQuestion) throw new HttpError('La pregunta objetivo no existe.', 404);
   }
 
-  if (action === 'DISABLE_SECTION' && !targetSectionId) {
-    throw new Error('Debes proporcionar una sección objetivo para esta acción.');
+  if (action === LogicAction.DISABLE_SECTION && !targetSectionId) {
+    throw new HttpError('Debes proporcionar una sección objetivo para esta acción.', 400);
   }
 
-  if (action === 'DISABLE_SECTION' && targetSectionId) {
+  if (action === LogicAction.DISABLE_SECTION && targetSectionId) {
     const targetSection = await prisma.section.findUnique({ where: { id: targetSectionId } });
-    if (!targetSection) throw new Error('La sección objetivo no existe.');
+    if (!targetSection) throw new HttpError('La sección objetivo no existe.', 404);
   }
 }
