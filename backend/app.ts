@@ -1,12 +1,13 @@
-const express = require('express');
+const expressApp = require('express');
 const errorHandler = require('./middleware/errorHandler.ts');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const cors = require('cors');
-const routes = require('./routes/index.ts'); 
-const app = express()
-const { PORT } = require('../backend/env')
+const routes = require('./routes/index'); 
+const app = expressApp();
+const { PORT } = require('../backend/env');
+const { swaggerUi: swaggerUI, swaggerSpec: swaggerSPEC } = require('./swagger');
 
 //middlewares
 app.use(cors());
@@ -26,6 +27,9 @@ app.use((req: any, res: any, next: any) => {
 
 //routes
 app.use('/', routes); //De esta forma se modularizan las rutas
+
+//swagger
+app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerSPEC));
 
 // Middleware para manejo de errores
 app.use(errorHandler);
