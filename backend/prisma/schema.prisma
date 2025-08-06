@@ -46,7 +46,7 @@ model Survey {
 model Section {
   id        Int           @id @default(autoincrement())
   title     String
-  order     Int           // para ordenar las secciones si querés
+  order     Int           // para ordenar las secciones
   surveyId  Int
   survey    Survey        @relation(fields: [surveyId], references: [id], onDelete: Cascade)
   questions Question[]
