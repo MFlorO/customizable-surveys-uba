@@ -60,14 +60,14 @@ export class SurveyService {
                 type: q.type,
                 characterLimit: q.characterLimit ?? undefined,
                 options: q.options?.length
-                  ? {
-                      create: q.options.map((opt) => ({
-                        label: opt.label,
-                        code: opt.code,
-                        isCustomText: opt.isCustomText,
-                      })),
-                    }
-                  : undefined,
+                ? {
+                    create: q.options.map((opt) => ({
+                      label: opt.label,
+                      code: opt.code,
+                      isCustomText: opt.isCustomText,
+                    })),
+                  }
+                : undefined,
                 logicConditions: undefined, 
               }))
             }
@@ -99,33 +99,37 @@ export class SurveyService {
 
           if (questionInput.logicConditions?.length) {
             for (const logic of questionInput.logicConditions) {
-              const triggeredOption = originalQuestion.options.find(opt => opt.id === logic.triggerOptionId); //TODO: OJO ! CODE?
+              
+              const triggeredOption = originalQuestion.options[logic.triggerOptionId - 1].id
 
-              if (!triggeredOption) {
-                throw new HttpError(`Opción no encontrada con código: ${logic.triggerOptionId}`, 400);
+              console.log(originalQuestion.options, logic.triggerOptionId, triggeredOption)
+
+              if (!triggeredOption) { //TODO!
+                await this.deleteByIdSilent(survey.id)
+                throw new HttpError(`Opción no encontrada con código: ${logic.triggerOptionId} al crear la encuesta`, 400);
               }
 
               const targetQuestionIndex = logic.targetQuestionId != null
-                ? section.questions?.findIndex(item => item.id === logic.targetQuestionId)
-                : -1;
+              ? section.questions?.findIndex(item => item.id === logic.targetQuestionId)
+              : -1;
 
               const realTargetQuestionId =
-                targetQuestionIndex !== -1 && targetQuestionIndex != null
-                  ? originalSection.questions?.[targetQuestionIndex]?.id ?? null
-                  : null;
+              targetQuestionIndex !== -1 && targetQuestionIndex != null   
+              ? originalSection.questions?.[targetQuestionIndex]?.id ?? null
+              : null;
               
               const targetSectionIndex = logic.targetSectionId != null
-                ? data.sections?.findIndex(item => item.id === logic.targetSectionId)
-                : -1;
+              ? data.sections?.findIndex(item => item.id === logic.targetSectionId)
+              : -1;
 
               const realTargetSectionId =
-                targetSectionIndex !== -1 && targetSectionIndex != null
-                  ? survey.sections?.[targetSectionIndex]?.id ?? null
-                  : null;
+              targetSectionIndex !== -1 && targetSectionIndex != null
+              ? survey.sections?.[targetSectionIndex]?.id ?? null
+              : null;
 
               const validationData = {
                 questionId: originalQuestion.id,
-                triggerOptionId: triggeredOption.id,
+                triggerOptionId: triggeredOption,
                 action: logic.action,
                 targetQuestionId: realTargetQuestionId,
                 targetSectionId: realTargetSectionId,
@@ -249,8 +253,10 @@ export class SurveyService {
             : null;
 
             if (!realTriggeredOption) {
-              throw new HttpError(`Opción no encontrada con código: ${logic.triggerOptionId}`, 400);
+              await this.deleteByIdSilent(survey.id)
+              throw new HttpError(`Opción no encontrada con código: ${logic.triggerOptionId} al crear la encuesta`, 400);
             }
+
 
             const targetQuestionIndex = logic.targetQuestionId != null
             ? section.questions?.findIndex(item => item.id === logic.targetQuestionId)
@@ -396,6 +402,15 @@ export class SurveyService {
       where: { id },
       data: { isEnable },
     });
+  }
+
+  private static async deleteByIdSilent(id: number) {
+    try {
+      await prisma.survey.delete({ where: { id } });
+      return {message: 'Encuesta eliminada con éxito', isError: false }
+    } catch (err: any) {
+      return {message: err.message ?? `No se pudo eliminar encuesta con ID ${id}:`, isError: true }
+    }
   }
 
 }
