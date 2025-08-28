@@ -1,4 +1,4 @@
-import { PrismaClient, SurveyStatus, QuestionType, Prisma, LogicAction } from '@prisma/client';
+import { PrismaClient, SurveyStatus, QuestionType, Prisma, LogicAction, Option } from '@prisma/client';
 import { validateLogicConditionData } from '../validators/logicCondition.validatiors';
 import { HttpError } from '../utils';
 const prisma = new PrismaClient();
@@ -18,6 +18,7 @@ type SurveyInput = {
       description?: string;
       type: QuestionType;
       isRequired: boolean;
+      isEnabled: boolean;
       characterLimit?: number;
       logicConditions?: {
         triggerOptionId: number;
@@ -57,6 +58,8 @@ export class SurveyService {
               : (section.questions ?? []).map((q) => ({
                 title: q.title,
                 description: q.description,
+                isRequired: q.isRequired,
+                isEnabled: q.isEnabled,
                 type: q.type,
                 characterLimit: q.characterLimit ?? undefined,
                 options: q.options?.length
@@ -64,7 +67,7 @@ export class SurveyService {
                     create: q.options.map((opt) => ({
                       label: opt.label,
                       code: opt.code,
-                      isCustomText: opt.isCustomText,
+                      isCustomText: opt.isCustomText
                     })),
                   }
                 : undefined,
@@ -92,7 +95,7 @@ export class SurveyService {
       });
 
       for (const [sectionIndex, section] of (data.sections ?? []).entries()) {
-        const originalSection = survey.sections[sectionIndex];
+        const originalSection = survey?.sections[sectionIndex];
 
         for (const [questionIndex, questionInput] of (section.questions ?? []).entries()) {
           const originalQuestion = originalSection.questions[questionIndex];
@@ -195,6 +198,7 @@ export class SurveyService {
                       title: q.title,
                       type: q.type,
                       isRequired: q.isRequired ?? true,
+                      isEnabled: q.isEnabled ?? true,
                       characterLimit: q.characterLimit,
                       options: q.options?.length
                         ? {

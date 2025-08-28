@@ -9,7 +9,7 @@ CREATE TYPE "public"."LogicAction" AS ENUM ('FINALIZE', 'DISABLE_QUESTION', 'ENA
 
 -- CreateTable
 CREATE TABLE "public"."Survey" (
-    "id" TEXT NOT NULL,
+    "id" SERIAL NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT,
     "status" "public"."SurveyStatus" NOT NULL DEFAULT 'DRAFT',
@@ -22,54 +22,55 @@ CREATE TABLE "public"."Survey" (
 
 -- CreateTable
 CREATE TABLE "public"."Section" (
-    "id" TEXT NOT NULL,
+    "id" SERIAL NOT NULL,
     "title" TEXT NOT NULL,
     "order" INTEGER NOT NULL,
-    "surveyId" TEXT NOT NULL,
+    "surveyId" INTEGER NOT NULL,
 
     CONSTRAINT "Section_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "public"."Question" (
-    "id" TEXT NOT NULL,
+    "id" SERIAL NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT,
     "type" "public"."QuestionType" NOT NULL,
     "isRequired" BOOLEAN NOT NULL DEFAULT true,
     "characterLimit" INTEGER,
-    "sectionId" TEXT NOT NULL,
+    "sectionId" INTEGER NOT NULL,
 
     CONSTRAINT "Question_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "public"."Option" (
-    "id" TEXT NOT NULL,
+    "id" SERIAL NOT NULL,
     "label" TEXT NOT NULL,
     "code" INTEGER NOT NULL,
-    "questionId" TEXT NOT NULL,
+    "questionId" INTEGER NOT NULL,
     "isCustomText" BOOLEAN NOT NULL DEFAULT false,
+    "parentOptionId" INTEGER,
 
     CONSTRAINT "Option_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "public"."LogicCondition" (
-    "id" TEXT NOT NULL,
-    "questionId" TEXT NOT NULL,
-    "triggerOptionId" TEXT NOT NULL,
+    "id" SERIAL NOT NULL,
+    "questionId" INTEGER NOT NULL,
+    "triggerOptionId" INTEGER NOT NULL,
     "action" "public"."LogicAction" NOT NULL,
-    "targetQuestionId" TEXT,
-    "targetSectionId" TEXT,
+    "targetQuestionId" INTEGER,
+    "targetSectionId" INTEGER,
 
     CONSTRAINT "LogicCondition_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "public"."SurveyResponse" (
-    "id" TEXT NOT NULL,
-    "surveyId" TEXT NOT NULL,
+    "id" SERIAL NOT NULL,
+    "surveyId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "SurveyResponse_pkey" PRIMARY KEY ("id")
@@ -77,28 +78,22 @@ CREATE TABLE "public"."SurveyResponse" (
 
 -- CreateTable
 CREATE TABLE "public"."Answer" (
-    "id" TEXT NOT NULL,
-    "responseId" TEXT NOT NULL,
-    "questionId" TEXT NOT NULL,
+    "id" SERIAL NOT NULL,
+    "responseId" INTEGER NOT NULL,
+    "questionId" INTEGER NOT NULL,
     "optionCodes" INTEGER[],
     "textAnswer" TEXT,
     "numericAnswer" DOUBLE PRECISION,
     "questionTitle" TEXT,
-    "sectionId" TEXT NOT NULL,
+    "sectionId" INTEGER NOT NULL,
     "sectionTitle" TEXT,
     "questionRequired" BOOLEAN,
     "logicApplied" BOOLEAN DEFAULT false,
     "logicAction" "public"."LogicAction",
-    "logicTargetId" TEXT,
+    "logicTargetId" INTEGER,
 
     CONSTRAINT "Answer_pkey" PRIMARY KEY ("id")
 );
-
--- CreateIndex
-CREATE UNIQUE INDEX "Section_id_key" ON "public"."Section"("id");
-
--- CreateIndex
-CREATE UNIQUE INDEX "Question_id_key" ON "public"."Question"("id");
 
 -- AddForeignKey
 ALTER TABLE "public"."Section" ADD CONSTRAINT "Section_surveyId_fkey" FOREIGN KEY ("surveyId") REFERENCES "public"."Survey"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -108,6 +103,9 @@ ALTER TABLE "public"."Question" ADD CONSTRAINT "Question_sectionId_fkey" FOREIGN
 
 -- AddForeignKey
 ALTER TABLE "public"."Option" ADD CONSTRAINT "Option_questionId_fkey" FOREIGN KEY ("questionId") REFERENCES "public"."Question"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."Option" ADD CONSTRAINT "Option_parentOptionId_fkey" FOREIGN KEY ("parentOptionId") REFERENCES "public"."Option"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."LogicCondition" ADD CONSTRAINT "LogicCondition_questionId_fkey" FOREIGN KEY ("questionId") REFERENCES "public"."Question"("id") ON DELETE CASCADE ON UPDATE CASCADE;

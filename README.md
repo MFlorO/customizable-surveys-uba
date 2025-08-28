@@ -5,7 +5,7 @@ Este es el backend de una aplicación de encuestas con lógica condicional, desa
 ## Correr en desarrollo
 
 1. Clonar el repositorio.
-2. Crear el ```.env``` en base al archivo ```env.js```.
+2. Crear el ```.env``` en base al archivo ```env.ts```.
 
 # Levantar el backend
 3. Instalar las dependencias con ``` npm install ```.

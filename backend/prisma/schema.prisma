@@ -60,6 +60,7 @@ model Question {
   description     String?
   type            QuestionType
   isRequired      Boolean           @default(true)
+  isEnabled       Boolean           @default(true)
   characterLimit  Int?              // solo para texto o número limitados
   sectionId       Int
   section         Section           @relation(fields: [sectionId], references: [id], onDelete: Cascade)
